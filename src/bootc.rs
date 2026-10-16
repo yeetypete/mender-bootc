@@ -47,25 +47,39 @@ pub struct BootcCli;
 
 impl Bootc for BootcCli {
     fn status(&self) -> Result<Host> {
-        let output = bootc(&["status", "--format", "json", "--format-version", "1"])?;
+        let output = output(&["status", "--format", "json", "--format-version", "1"])?;
         serde_json::from_str(&output).context("parsing bootc status")
     }
 
     fn switch(&self, image: &TargetImage) -> Result<()> {
-        bootc(&["switch", "--quiet", &image.to_string()]).map(drop)
+        run(&["switch", "--quiet", &image.to_string()])
     }
 
     fn rollback(&self) -> Result<()> {
-        bootc(&["rollback"]).map(drop)
+        run(&["rollback"])
     }
 
     fn delete_deployment(&self, verity: &Verity) -> Result<()> {
-        bootc(&["delete-deployment", verity.as_str()]).map(drop)
+        run(&["delete-deployment", verity.as_str()])
     }
 }
 
-/// Run bootc with `args`, returning its stdout.
-fn bootc(args: &[&str]) -> Result<String> {
+/// Run bootc with `args`. Its output goes to the deployment log.
+fn run(args: &[&str]) -> Result<()> {
+    let status = Command::new("bootc")
+        .args(args)
+        .status()
+        .context("running bootc")?;
+    ensure!(
+        status.success(),
+        "bootc {} failed with {status}",
+        args.join(" ")
+    );
+    Ok(())
+}
+
+/// Run bootc with `args`.
+fn output(args: &[&str]) -> Result<String> {
     let output = Command::new("bootc")
         .args(args)
         .stderr(Stdio::inherit())
