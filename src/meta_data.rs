@@ -12,7 +12,7 @@ use serde::Deserialize;
 #[serde(deny_unknown_fields)]
 pub struct MetaData {
     /// The image reference to update to.
-    pub image: ImageRef,
+    pub image: TargetImage,
 }
 
 impl MetaData {
@@ -37,9 +37,9 @@ impl MetaData {
 /// An image reference pinned by digest, e.g. `docker.io/example/os@sha256:…`.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(try_from = "String")]
-pub struct ImageRef(Reference);
+pub struct TargetImage(Reference);
 
-impl FromStr for ImageRef {
+impl FromStr for TargetImage {
     type Err = anyhow::Error;
 
     fn from_str(image: &str) -> Result<Self> {
@@ -57,7 +57,7 @@ impl FromStr for ImageRef {
     }
 }
 
-impl TryFrom<String> for ImageRef {
+impl TryFrom<String> for TargetImage {
     type Error = anyhow::Error;
 
     fn try_from(image: String) -> Result<Self> {
@@ -65,7 +65,7 @@ impl TryFrom<String> for ImageRef {
     }
 }
 
-impl std::fmt::Display for ImageRef {
+impl std::fmt::Display for TargetImage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn rejects_image_tag() {
         let err = "docker.io/example/os:latest"
-            .parse::<ImageRef>()
+            .parse::<TargetImage>()
             .unwrap_err();
         assert!(err.to_string().contains("not pinned"), "{err}");
     }
@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn rejects_tag_and_digest() {
         let err = format!("docker.io/example/os:latest@sha256:{}", "2".repeat(64))
-            .parse::<ImageRef>()
+            .parse::<TargetImage>()
             .unwrap_err();
         assert!(err.to_string().contains("both a tag and a digest"), "{err}");
     }
