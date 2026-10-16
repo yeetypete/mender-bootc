@@ -30,15 +30,13 @@ unsafe_code = "forbid"
 [dependencies]
 anyhow = { workspace = true }
 camino = "1"
-cap-std-ext = { version = "5", features = ["fs_utf8"] }
 clap = { workspace = true }
+oci-spec = { version = "0.10", default-features = false, features = ["image"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { workspace = true }
+strum = { version = "0.27", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-
-[dev-dependencies]
-indoc = "2"
 
 [lints]
 workspace = true
