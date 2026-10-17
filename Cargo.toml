@@ -36,6 +36,12 @@ todo = "warn"
 missing_debug_implementations = "warn"
 unsafe_code = "forbid"
 
+# Integration tests, see tests/integration/main.rs.
+[[test]]
+name = "integration"
+path = "tests/integration/main.rs"
+required-features = ["integration"]
+
 [dependencies]
 anyhow = { workspace = true }
 camino = "1"
@@ -47,6 +53,9 @@ strum = { version = "0.27", features = ["derive"] }
 tempfile = "3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[features]
+integration = []
 
 [lints]
 workspace = true

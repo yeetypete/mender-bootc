@@ -6,14 +6,26 @@ use anyhow::{Context, Result, ensure};
 use serde::de::DeserializeOwned;
 
 /// Run a command to completion.
-pub(crate) trait CommandRunExt {
+pub trait CommandRunExt {
     /// Run the command, inheriting its stdout and stderr.
+    ///
+    /// # Errors
+    ///
+    /// Fails if the command fails.
     fn run_inherited(&mut self) -> Result<()>;
 
     /// Run the command, returning its stdout. Its stderr is inherited.
+    ///
+    /// # Errors
+    ///
+    /// Fails if the command fails.
     fn run_get_output(&mut self) -> Result<Vec<u8>>;
 
     /// Run the command and parse its stdout as JSON.
+    ///
+    /// # Errors
+    ///
+    /// Fails if the command fails or does not print `T` as JSON.
     fn run_and_parse_json<T: DeserializeOwned>(&mut self) -> Result<T>;
 }
 
