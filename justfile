@@ -13,6 +13,10 @@ check:
 test:
     cargo test --locked
 
+# Run the integration tests.
+test-integration *args:
+    cargo xtask test {{ args }}
+
 # Build a release binary.
 build:
     cargo build --release --locked
