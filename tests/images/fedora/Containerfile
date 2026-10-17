@@ -1,0 +1,68 @@
+ARG FEDORA_IMAGE=quay.io/fedora/fedora:44@sha256:74e857c33dfb387710b2b1a0203824351a25e9844356af2d1e5792ca2a96129b
+ARG FEDORA_BOOTC_IMAGE=quay.io/fedora/fedora-bootc:44@sha256:9db34195bc0b6be43e17c20ca840be5bc153093c94b62f6792a76fb199eeaced
+
+
+FROM ${FEDORA_IMAGE} AS mender-builder
+
+RUN --mount=type=cache,target=/var/cache/libdnf5,sharing=locked \
+    dnf install -y --setopt=keepcache=True --setopt=install_weak_deps=False \
+    boost-devel \
+    clang \
+    cmake \
+    dbus-devel \
+    git \
+    libarchive-devel \
+    lmdb-devel \
+    make \
+    openssl-devel \
+    openssl-devel-engine \
+    systemd-devel
+
+# Mender only packages its client for Debian and Ubuntu.
+ARG MENDER_VERSION=5.2.0
+RUN git clone --depth 1 --branch "${MENDER_VERSION}" --recurse-submodules \
+    --shallow-submodules https://github.com/mendersoftware/mender.git /mender
+
+RUN cmake -S /mender -B /mender/build -DCMAKE_INSTALL_PREFIX=/usr \
+      -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ && \
+    make -C /mender/build -j"$(nproc)" mender-update && \
+    DESTDIR=/out cmake --install /mender/build --component mender-update
+
+
+FROM ${FEDORA_IMAGE} AS mender-bootc-builder
+
+RUN --mount=type=cache,target=/var/cache/libdnf5,sharing=locked \
+    dnf install -y --setopt=keepcache=True --setopt=install_weak_deps=False cargo
+
+# The repository is passed as a build context:
+#
+#     podman build --build-context source=. tests/images/fedora
+RUN --mount=type=bind,from=source,target=/mender-bootc \
+    --mount=type=cache,target=/root/.cargo/registry,sharing=locked \
+    --mount=type=cache,target=/target,sharing=locked \
+    cargo install --locked --path /mender-bootc --bin mender-bootc --root /out \
+      --target-dir /target
+
+
+FROM ${FEDORA_BOOTC_IMAGE}
+
+# Install runtime libraries of the Mender client.
+RUN --mount=type=cache,target=/var/cache/libdnf5,sharing=locked \
+    --mount=type=tmpfs,target=/run \
+    --mount=type=tmpfs,target=/var/log \
+    --mount=type=tmpfs,target=/var/cache/ldconfig \
+    dnf install -y --setopt=keepcache=True --setopt=install_weak_deps=False \
+    boost-log \
+    libarchive \
+    lmdb-libs
+
+COPY --from=mender-builder /out/ /
+COPY --from=mender-bootc-builder /out/bin/mender-bootc /usr/share/mender/modules/v3/bootc
+
+COPY system_files/ /
+
+# Test: OTA with the Mender Client to an image with a different IMAGE_VERSION.
+ARG IMAGE_VERSION=base
+RUN echo "IMAGE_VERSION=${IMAGE_VERSION}" >> /usr/lib/os-release
+
+RUN bootc container lint --fatal-warnings
