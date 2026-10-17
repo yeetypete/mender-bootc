@@ -60,3 +60,47 @@ jobs:
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Run unit tests
         run: just test
+
+  integration:
+    name: integration
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Install VM tools and mender-artifact
+        env:
+          BCVK_VERSION: 0.21.0
+          BCVK_SHA256: 3135cc59b8971193b49be6cbaee12b789391ac6e6ab5ed3edf17082b03f144dd
+        run: |
+          curl -fsSL https://downloads.mender.io/repos/debian/gpg |
+            sudo gpg --dearmor -o /usr/share/keyrings/mender.gpg
+          echo "deb [signed-by=/usr/share/keyrings/mender.gpg] https://downloads.mender.io/repos/workstation-tools ubuntu/resolute/stable main" |
+            sudo tee /etc/apt/sources.list.d/mender.list
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y qemu-system-x86 \
+            qemu-utils ovmf virtiofsd libvirt-daemon libvirt-clients mender-artifact
+          curl -fsSLo "$RUNNER_TEMP/bcvk.tar.gz" \
+            "https://github.com/bootc-dev/bcvk/releases/download/v$BCVK_VERSION/bcvk-x86_64-unknown-linux-gnu.tar.gz"
+          echo "$BCVK_SHA256  $RUNNER_TEMP/bcvk.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/bcvk.tar.gz" -C "$RUNNER_TEMP"
+          sudo install -m 755 "$RUNNER_TEMP/bcvk-x86_64-unknown-linux-gnu" /usr/local/bin/bcvk
+
+      # Ubuntu only lets root and the kvm group open /dev/kvm.
+      - name: Allow access to KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666"' |
+            sudo tee /etc/udev/rules.d/99-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the integration tests
+        run: just test-integration
