@@ -1,4 +1,4 @@
-//! Bootc Mender update module.
+//! Bootc Mender Update Module.
 //!
 //! 1. `ArtifactInstall` stages the Artifact's image with `bootc switch`.
 //! 2. Mender reboots the host, and bootc finalizes the staged deployment on
