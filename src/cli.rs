@@ -5,6 +5,8 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use clap::Parser;
 
+use crate::bootc::BootcCli;
+use crate::module;
 use crate::protocol::State;
 
 #[derive(Debug, Parser)]
@@ -26,8 +28,12 @@ impl Cli {
     ///
     /// Returns the state's error, which fails the update.
     pub fn run(self) -> Result<()> {
-        tracing::debug!("Ignoring {}", self.state);
-        Ok(())
+        module::run(
+            &self.state,
+            &self.file_tree,
+            &BootcCli,
+            &mut std::io::stdout().lock(),
+        )
     }
 }
 
