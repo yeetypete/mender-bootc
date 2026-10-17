@@ -87,7 +87,8 @@ jobs:
             sudo tee /etc/apt/sources.list.d/mender.list
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y qemu-system-x86 \
-            qemu-utils ovmf virtiofsd libvirt-daemon libvirt-clients mender-artifact
+            qemu-utils ovmf virtiofsd libvirt-daemon libvirt-daemon-driver-qemu \
+            libvirt-daemon-driver-storage libvirt-clients mender-artifact
           curl -fsSLo "$RUNNER_TEMP/bcvk.tar.gz" \
             "https://github.com/bootc-dev/bcvk/releases/download/v$BCVK_VERSION/bcvk-x86_64-unknown-linux-gnu.tar.gz"
           echo "$BCVK_SHA256  $RUNNER_TEMP/bcvk.tar.gz" | sha256sum --check
