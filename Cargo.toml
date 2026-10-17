@@ -35,6 +35,7 @@ oci-spec = { version = "0.10", default-features = false, features = ["distributi
 serde = { version = "1", features = ["derive"] }
 serde_json = { workspace = true }
 strum = { version = "0.27", features = ["derive"] }
+tempfile = "3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 

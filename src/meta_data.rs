@@ -6,9 +6,9 @@ use std::str::FromStr;
 use anyhow::{Context, Result, bail};
 use camino::Utf8Path;
 use oci_spec::distribution::Reference;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize, Serializer};
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MetaData {
     /// The image reference to update to.
@@ -62,6 +62,12 @@ impl TryFrom<String> for TargetImage {
 
     fn try_from(image: String) -> Result<Self> {
         image.parse()
+    }
+}
+
+impl Serialize for TargetImage {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
     }
 }
 

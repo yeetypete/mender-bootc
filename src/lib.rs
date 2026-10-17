@@ -4,6 +4,7 @@ use std::process::ExitCode;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
 
+pub mod artifact_gen;
 pub mod bootc;
 pub mod cli;
 mod command;
