@@ -66,6 +66,7 @@ jobs:
     runs-on: ubuntu-26.04
     permissions:
       contents: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -103,5 +104,16 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      - name: Log in to GitHub Container Registry
+        uses: redhat-actions/podman-login@50c2d9a331bb67c8fdab99b86455fad05e2e3252 # v2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
       - name: Run the integration tests
+        env:
+          MENDER_BOOTC_BUILD_OPTIONS: >-
+            --cache-from=ghcr.io/${{ github.repository }}/cache-fedora
+            ${{ github.event.pull_request.head.repo.fork != true && format('--cache-to=ghcr.io/{0}/cache-fedora', github.repository) || '' }}
         run: just test-integration

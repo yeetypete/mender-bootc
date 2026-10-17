@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::{Context, Result, ensure};
-use clap::Parser;
+use clap::{Args, Parser};
 use xshell::{Shell, cmd};
 
 /// The repository the test images are tagged under.
@@ -24,13 +24,21 @@ const REGISTRY_HOST: &str = "127.0.0.1:5000";
 /// `tests/images/fedora/system_files/etc/containers/registries.conf.d`.
 const REGISTRY_VM: &str = "10.0.2.2:5000";
 
+/// The environment variable setting `Build`.
+const BUILD_OPTIONS_ENV: &str = "MENDER_BOOTC_BUILD_OPTIONS";
+
 #[derive(Debug, Parser)]
 enum Task {
     /// Build the base and the update test image.
-    Images,
+    Images {
+        #[command(flatten)]
+        build: Build,
+    },
     /// Build the test images and run the integration tests against VMs booted
     /// from the base image.
     Test {
+        #[command(flatten)]
+        build: Build,
         /// Arguments for the test binary, e.g. a test name filter.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<OsString>,
@@ -41,9 +49,17 @@ fn main() -> Result<()> {
     let sh = Shell::new()?;
     sh.change_dir(workspace_dir()?);
     match Task::parse() {
-        Task::Images => images(&sh),
-        Task::Test { args } => test(&sh, &args),
+        Task::Images { build } => images(&sh, &build),
+        Task::Test { build, args } => test(&sh, &build, &args),
     }
+}
+
+/// How the test images are built.
+#[derive(Debug, Args)]
+struct Build {
+    /// An option passed to `podman build`, such as a cache.
+    #[arg(long = "build-option", env = BUILD_OPTIONS_ENV, value_delimiter = ' ', allow_hyphen_values = true)]
+    options: Vec<String>,
 }
 
 /// The root of the workspace.
@@ -56,11 +72,17 @@ fn workspace_dir() -> Result<PathBuf> {
 }
 
 /// Build the images the tests update from and to.
-fn images(sh: &Shell) -> Result<()> {
+fn images(sh: &Shell, build: &Build) -> Result<()> {
+    let options: Vec<&String> = build
+        .options
+        .iter()
+        .filter(|option| !option.is_empty())
+        .collect();
+    let options = options.as_slice();
     for version in ["base", "update"] {
         cmd!(
             sh,
-            "podman build --build-context source=. --build-arg IMAGE_VERSION={version} --tag {REPOSITORY}:{version} tests/images/fedora"
+            "podman build {options...} --build-context source=. --build-arg IMAGE_VERSION={version} --tag {REPOSITORY}:{version} tests/images/fedora"
         )
         .run()?;
     }
@@ -68,7 +90,7 @@ fn images(sh: &Shell) -> Result<()> {
 }
 
 /// Push the update image to the registry and run the tests against it.
-fn test(sh: &Shell, args: &[OsString]) -> Result<()> {
+fn test(sh: &Shell, build: &Build, args: &[OsString]) -> Result<()> {
     // bootc-artifact-gen runs mender-artifact.
     let missing: Vec<_> = ["bcvk", "mender-artifact", "podman"]
         .into_iter()
@@ -79,7 +101,7 @@ fn test(sh: &Shell, args: &[OsString]) -> Result<()> {
         "the test suite requires: {}",
         missing.join(", ")
     );
-    images(sh)?;
+    images(sh, build)?;
     let _registry = Registry::start(sh)?;
     let update = push_update(sh)?;
     cmd!(

@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 anyhow = { workspace = true }
-clap = { workspace = true }
+clap = { workspace = true, features = ["env"] }
 which = "8"
 xshell = { workspace = true }
 
