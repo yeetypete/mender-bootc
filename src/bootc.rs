@@ -1,10 +1,11 @@
 //! Run bootc and read its status.
 
-use std::process::{Command, Stdio};
+use std::process::Command;
 
-use anyhow::{Context, Result, ensure};
+use anyhow::{Context, Result};
 use serde::Deserialize;
 
+use crate::command::CommandRunExt;
 use crate::meta_data::TargetImage;
 
 /// bootc operations required for an update.
@@ -47,51 +48,26 @@ pub struct BootcCli;
 
 impl Bootc for BootcCli {
     fn status(&self) -> Result<Host> {
-        let output = output(&["status", "--format", "json", "--format-version", "1"])?;
-        serde_json::from_str(&output).context("parsing bootc status")
+        Command::new("bootc")
+            .args(["status", "--format", "json", "--format-version", "1"])
+            .run_and_parse_json()
     }
 
     fn switch(&self, image: &TargetImage) -> Result<()> {
-        run(&["switch", "--quiet", &image.to_string()])
+        Command::new("bootc")
+            .args(["switch", "--quiet", &image.to_string()])
+            .run_inherited()
     }
 
     fn rollback(&self) -> Result<()> {
-        run(&["rollback"])
+        Command::new("bootc").arg("rollback").run_inherited()
     }
 
     fn delete_deployment(&self, verity: &Verity) -> Result<()> {
-        run(&["delete-deployment", verity.as_str()])
+        Command::new("bootc")
+            .args(["delete-deployment", verity.as_str()])
+            .run_inherited()
     }
-}
-
-/// Run bootc with `args`. Its output goes to the deployment log.
-fn run(args: &[&str]) -> Result<()> {
-    let status = Command::new("bootc")
-        .args(args)
-        .status()
-        .context("running bootc")?;
-    ensure!(
-        status.success(),
-        "bootc {} failed with {status}",
-        args.join(" ")
-    );
-    Ok(())
-}
-
-/// Run bootc with `args`.
-fn output(args: &[&str]) -> Result<String> {
-    let output = Command::new("bootc")
-        .args(args)
-        .stderr(Stdio::inherit())
-        .output()
-        .context("running bootc")?;
-    ensure!(
-        output.status.success(),
-        "bootc {} failed with {}",
-        args.join(" "),
-        output.status
-    );
-    String::from_utf8(output.stdout).context("bootc printed non-UTF-8 output")
 }
 
 /// The fs-verity digest of a deployment's composefs image, which are used
