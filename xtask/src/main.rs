@@ -2,6 +2,7 @@
 
 use std::ffi::OsString;
 use std::path::PathBuf;
+use std::process::Command;
 
 use anyhow::{Context, Result, ensure};
 use clap::Parser;
@@ -79,22 +80,39 @@ fn test(sh: &Shell, args: &[OsString]) -> Result<()> {
         missing.join(", ")
     );
     images(sh)?;
+    let _registry = Registry::start(sh)?;
+    let update = push_update(sh)?;
     cmd!(
         sh,
-        "podman run --detach --replace --name {REGISTRY} --publish {REGISTRY_HOST}:5000 {REGISTRY_IMAGE}"
+        "cargo test --locked --features integration --test integration -- --test-threads=1 {args...}"
     )
+    .env("MENDER_BOOTC_TEST_UPDATE", update)
     .run()?;
-    let result = push_update(sh).and_then(|update| {
+    Ok(())
+}
+
+/// The registry the tests pull the update image from, removed when dropped.
+#[derive(Debug)]
+struct Registry;
+
+impl Registry {
+    /// Start the registry, replacing any existing one.
+    fn start(sh: &Shell) -> Result<Self> {
         cmd!(
             sh,
-            "cargo test --locked --features integration --test integration -- --test-threads=1 {args...}"
+            "podman run --detach --rm --replace --name {REGISTRY} --publish {REGISTRY_HOST}:5000 {REGISTRY_IMAGE}"
         )
-        .env("MENDER_BOOTC_TEST_UPDATE", update)
         .run()?;
-        Ok(())
-    });
-    cmd!(sh, "podman rm --force {REGISTRY}").quiet().run()?;
-    result
+        Ok(Self)
+    }
+}
+
+impl Drop for Registry {
+    fn drop(&mut self) {
+        let _ = Command::new("podman")
+            .args(["rm", "--force", REGISTRY])
+            .output();
+    }
 }
 
 /// Push the update image to the registry, returning the reference the VMs
