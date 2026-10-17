@@ -30,7 +30,7 @@ pub struct Cli {
     /// resolved to their current digest when the Artifact is built.
     pub image: String,
 
-    /// Options for `mender-artifact write module-image`, e.g. `-k key.pem` to
+    /// Options for `mender-artifact write module-image`, e.g. `--key key.pem` to
     /// sign the Artifact.
     #[arg(last = true)]
     pub mender_artifact_args: Vec<String>,
