@@ -78,7 +78,7 @@ mod tests {
     const IMAGE: &str = "docker.io/example/os@sha256:2222222222222222222222222222222222222222222222222222222222222222";
 
     #[test]
-    fn parses_image() -> Result<()> {
+    fn round_trips_image() -> Result<()> {
         let meta_data = MetaData::parse(&format!(r#"{{"image": "{IMAGE}"}}"#))?;
         assert_eq!(meta_data.image.to_string(), IMAGE);
         Ok(())
@@ -91,7 +91,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_image_tag() {
+    fn rejects_image_without_digest() {
         let err = "docker.io/example/os:latest"
             .parse::<TargetImage>()
             .unwrap_err();
