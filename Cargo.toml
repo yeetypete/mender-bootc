@@ -1,20 +1,29 @@
 [package]
 name = "mender-bootc"
 version = "0.1.0"
-edition = "2024"
-rust-version = "1.98"
+edition.workspace = true
+rust-version.workspace = true
 description = "Mender Update Module for composefs bootc images."
-repository = "https://github.com/yeetypete/mender-bootc"
-license = "MIT"
+repository.workspace = true
+license.workspace = true
 keywords = ["bootc", "composefs", "mender", "ota", "update"]
 categories = ["command-line-utilities"]
 publish = false
 
 [workspace]
+members = ["xtask"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.98"
+repository = "https://github.com/yeetypete/mender-bootc"
+license = "MIT"
+
 [workspace.dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 serde_json = "1"
+xshell = "0.2"
 
 [workspace.lints.clippy]
 dbg_macro = "warn"
