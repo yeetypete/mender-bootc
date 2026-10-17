@@ -57,6 +57,8 @@ impl Vm {
         Command::new("bcvk")
             .args(["libvirt", "--connect", LIBVIRT, "run", "--name", &vm.name])
             .args(["--composefs-backend", "--filesystem", "ext4"])
+            // The VMs do not need TPM.
+            .arg("--disable-tpm")
             .arg("--bind")
             .arg(format!("{}:{SHARED}", shared.display()))
             .args(["--detach", "--ssh-wait", BASE_IMAGE])
